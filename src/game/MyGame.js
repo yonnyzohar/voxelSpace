@@ -119,8 +119,8 @@ class MyGame extends Main {
         this.x = 0;
         this.y = 0;
         this.heightFactor = 100;
-        this.farPlane = 20;
-        this.nearPlane = 5;
+        this.farPlane = 290;
+        this.nearPlane = 50;
         this.turnSpeed = 2;
         this.moveSpeed = 1;
 
@@ -145,6 +145,11 @@ class MyGame extends Main {
             bitmapData2.fromImage(img);
             this.bitmapData2 = bitmapData2;
         }
+
+        this.easings = [this.easeOutQuint,this.easeOutQuad,this.easeOutCubic, this.easeOutQuart];
+        this.currFncIndex = 0;
+        this.switchTime = 5;
+        this.currTime = 0;
         // Set the image source
         
        /* */
@@ -153,6 +158,10 @@ class MyGame extends Main {
 
 
     update(dt) {
+
+
+             
+
 
         document.getElementById('height').innerText = "height " + this.heightFactor;
         document.getElementById('near').innerText = "near " + this.nearPlane;
@@ -166,7 +175,7 @@ class MyGame extends Main {
             var p = this.player;
             //this.floorCast(p.leftRad, p.rightRad, p.x, p.y,this.bitmapData2,this.bitmapData, this.nearPlane,this.farPlane);
 
-            /*
+            /**/
             var w = this.bitmapData2.width;
             var h = this.bitmapData2.height;
             var pixelObj = {r:0, g:0, b:0, a:0};
@@ -178,7 +187,7 @@ class MyGame extends Main {
                     this.bitmapData.setPixel(i,j, pixelObj.r, pixelObj.g, pixelObj.b,pixelObj.a);
                 }
             }
-            */
+            
             this.drawSightRange(p);            
             
 
@@ -218,6 +227,16 @@ class MyGame extends Main {
               if(keys['f'])
               {
                 this.nearPlane+=this.moveSpeed;
+              }
+
+
+              if(keys['q'])
+              {
+                this.currFncIndex++;
+                if(this.currFncIndex >= this.easings.length)
+                {
+                    this.currFncIndex = 0;
+                }
               }
 
               this.fixPoint(p);
@@ -283,7 +302,7 @@ class MyGame extends Main {
         sin = Math.sin(p.rightRad) * this.farPlane;
         endRightPoint.x += cos;
         endRightPoint.y += sin;
-        /*
+        /**/
         this.bitmapData.setPixel(p.x , p.y , 255,0,0,255); 
 
         var leftDist = Math.abs(Util.distanceTwoPoints(endLeftPoint.x, startLeftPoint.x,endLeftPoint.y,startLeftPoint.y ));
@@ -333,7 +352,7 @@ class MyGame extends Main {
             this.fixPoint(currPoint);
             this.bitmapData.setPixel(currPoint.x , currPoint.y , 255,0,0,255); 
         }
-        */
+        
 
         this.drawImage({
             topLeft : endLeftPoint,
@@ -351,262 +370,83 @@ class MyGame extends Main {
         this.textureSprite.texture.update();
     }
 
-    floorCast(leftRay, rightRay, playerX, playerY, srcBD , targetBD, nearPlane, farPlane) {
-
-        var app = this.app;
-        var windowH = app.view.height + farPlane;
-        var windowW = app.view.width;
-
-        var prevHeights = [];
-
-        //print(windowH);
-        //print(windowW);
-
-        var leftRaySin = Math.sin(leftRay);
-        var leftRayCos = Math.cos(leftRay);
-
-        var rightRaySin = Math.sin(rightRay);
-        var rightRayCos = Math.cos(rightRay);
-
-        //far topleft
-        var currentFarX1 = playerX + leftRayCos * farPlane;
-        var currentFarY1 = playerY + leftRaySin * farPlane;
-
-        //far top right
-        var currentFarX2 = playerX + rightRayCos * farPlane;
-        var currentFarY2 = playerY + rightRaySin * farPlane;
-
-        //near bottom left
-        var currentNearX1 = playerX + leftRayCos * nearPlane;
-        var currentNearY1 = playerY + leftRaySin * nearPlane;
-
-        //near bottom right
-        var currentNearX2 = playerX + rightRayCos * nearPlane;
-        var currentNearY2 = playerY + rightRaySin * nearPlane;
-
-        var pixel = {r:0, g:0, b:0, a:0};
-        var depthPixel = {r:0, g:0, b:0, a:0};
-        //go from btm to top
-        for (var _y = (windowH / 2); _y >= 0; _y--) {
-
-            //get percentage of descent
-            var sampleDepth = _y / (windowH/2);
-
-            //print("_y " + _y + " sampleDepth " + sampleDepth);
-
-            //get start x and y pixel at this percentage
-            var startX = (currentFarX1 - currentNearX1) / sampleDepth + currentNearX1;
-            var startY = (currentFarY1 - currentNearY1) / sampleDepth + currentNearY1;
-
-            var endX = (currentFarX2 - currentNearX2) / sampleDepth + currentNearX2;
-            var endY = (currentFarY2 - currentNearY2) / sampleDepth + currentNearY2;
-            
-            //new find e percantage
-            for (var _x = 0; _x < windowW; _x++) {
-                //get percentage of width
-                var sampleWidth = (_x) / (windowW);
-                var currX = (endX - startX) * sampleWidth + startX;
-                var currY = (endY - startY) * sampleWidth + startY;
-                //print(" _x " + _x + " sampleWidth " + sampleWidth);
-
-                if (isNaN(currX)) {
-                    currX = 0;
-                }
-                if (isNaN(currY)) {
-                    currY = 0;
-                }
-
-                //wrap around
-
-                //instead of getting the pixel from a large bitmapData, i can get it from the map
-                srcBD.getPixel(currX, currY, pixel,true);
-                this.depthMapData.getPixel(currX, currY, depthPixel, true);
-
-                var heightPer = (depthPixel.r / 255);
-                //make percentage between -1 and 1
-                heightPer += 1;
-                heightPer /= 2;
-                heightPer *= this.heightFactor;
-
-                ////////////////////////////////////////////////////////
-                var __x = parseInt(_x);
-                var __y = parseInt(_y + (windowH / 2) - (heightPer * sampleDepth));//
-
-                if(__y < windowH && __x > 0 && __x < windowW)
-                {
-
-                    if(!prevHeights[__x])
-                    {
-                        prevHeights[__x] = windowH;
-                    }
-                    
-                    //targetBD.setPixel(__x, __y, pixel.r, pixel.g, pixel.b, pixel.a);
-
-                    for(var h = __y; h < prevHeights[__x]; h++)
-                    {
-                        var d = Math.min((255*sampleDepth)*1.1, 255);
-                        targetBD.setPixel(__x, h, pixel.r, pixel.g, pixel.b, d);
-                    }
-
-                    prevHeights[__x] = __y;
-
-                }
-                //print("__x " + __x + "__y " + __y);
-                
-
-                //pixel = ceilBD.getPixel(currX, currY);
-                //pixel = ceilTile.getPixel(realX / Model.TILE_SIZE, realY / Model.TILE_SIZE);
-
-                //bmd.setPixel(_x, (Model.windowH / 2) - _y, pixel);
-            }
-        }
-
-    }
-
-     drawImage(o,srcBD , targetBD) {
-
+    drawImage(o, srcBD, targetBD) {
         var app = this.app;
         var windowH = app.view.height;
         var windowW = app.view.width;
-        var halfBd = windowH /2;
-        halfBd -= this.farPlane;
-
+        var halfBd = parseFloat(windowH / 2) * 1.5;
+    
         var p1 = o.topLeft;
         var p2 = o.topRight;
         var p3 = o.btmLeft;
         var p4 = o.btmRight;
-
+    
         var leftLen = Util.distanceTwoPoints(p1.x, p3.x, p1.y, p3.y);
         var rightLen = Util.distanceTwoPoints(p2.x, p4.x, p2.y, p4.y);
-
+    
         var startRowsAngle;
         var startRowsLen;
         var fromPStart;
         var fromPEnd;
-
+    
         var endRowsAngle;
         var endRowsLen;
         var toPStart;
         var toPEnd;
-
-
-
-        startRowsLen = (leftLen);
-        endRowsLen = (rightLen);
+    
+        startRowsLen = leftLen;
+        endRowsLen = rightLen;
         fromPStart = p1;
         fromPEnd = p3;
         toPStart = p2;
         toPEnd = p4;
-
-
+    
         startRowsAngle = Util.getAngle(fromPEnd.x, fromPEnd.y, fromPStart.x, fromPStart.y);
         endRowsAngle = Util.getAngle(toPEnd.x, toPEnd.y, toPStart.x, toPStart.y);
-
-        var startRowCos = -1;
-        var startRowSin = -1;
-        var startrowSinDist;
-        var startrowCosDist;
-
-        var endRowCos = -1;
-        var endRowSin = -1;
-        var endrowSinDist;
-        var endrowCosDist;
-        
-        
-       
-        var pixel = {r:0, g:0, b:0, a:0};
-        var depthPixel = {r:0, g:0, b:0, a:0};
+    
         var prevHeights = [];
         var depthBuffer = [];
-        for (var row = targetBD.height; row  >= halfBd; row--) {
-            //looks best but does not make sense!
-            var rowPer = 1 - (targetBD.height / row);
-            //naive and looks like shit
-            //var rowPer =  ( ((row - halfBd)/2) / halfBd);
-            //this makes most sense
-            
-            //print(rowPer);
+        for (var row = halfBd; row >= 0; row--) {
+            var rowPer = row / halfBd;
+            rowPer = this.easings[this.currFncIndex](rowPer, 0,1,1);
 
-            //we are getting an angle from the far to the near, not near to far. hence 0 percent is exactly on FAR
-            if (startRowCos == -1) {
-                startRowCos = Math.cos(startRowsAngle);
-                startRowSin = Math.sin(startRowsAngle);
-                startrowSinDist = (startRowSin * startRowsLen);
-                startrowCosDist = (startRowCos * startRowsLen);
-            }
-
-            //rows in the trapeze start at the distance and move towards the player
-            var currStartX = parseInt(startrowCosDist * rowPer);
-            var currStartY = parseInt(startrowSinDist * rowPer);
-            //add the offset of the start pixel
-            currStartX += fromPStart.x;
-            currStartY += fromPStart.y;
-
-
-            if (endRowCos == -1) {
-                endRowCos = Math.cos(endRowsAngle);
-                endRowSin = Math.sin(endRowsAngle);
-                endrowSinDist = (endRowSin * endRowsLen);
-                endrowCosDist = (endRowCos * endRowsLen);
-            }
-
-            var currEndX = endrowCosDist * rowPer;
-            var currEndY = endrowSinDist * rowPer;
-            //add the offset of the start pixel
-            currEndX += toPStart.x;
-            currEndY += toPStart.y;
-
-            var cp1 = {x:currStartX, y:currStartY};
-            var cp2 = {x: currEndX, y:currEndY};
-
-            var slopeStartToEndAngle = Util.getAngle(cp2.x, cp2.y, cp1.x,cp1.y );
-            var distanceBetweenCurrs = Util.distanceTwoPoints(cp1.x, cp2.x, cp1.y,cp2.y );
-
-            var COS = -1;
-            var SIN = -1;
-            var SIN_dist;
-            var COS_dist ;
-
+            var currStartX = this.lerp(fromPStart.x, fromPEnd.x, rowPer);
+            var currStartY = this.lerp(fromPStart.y, fromPEnd.y, rowPer);
+            var currEndX = this.lerp(toPStart.x, toPEnd.x, rowPer);
+            var currEndY = this.lerp(toPStart.y, toPEnd.y, rowPer);
+    
+            var rowDist = Math.abs(Util.distanceTwoPoints(currStartX, currEndX, currStartY, currEndY));
+            var slopeStartToEndAngle = Util.getAngle(currEndX, currEndY, currStartX, currStartY);
+            var COS = Math.cos(slopeStartToEndAngle);
+            var SIN = Math.sin(slopeStartToEndAngle);
+            var COS_dist = COS * rowDist;
+            var SIN_dist = SIN * rowDist;
+    
             for (var col = 0; col < targetBD.width; col++) {
-
-                if (COS == -1) {
-                    COS = Math.cos(slopeStartToEndAngle);
-                    SIN = Math.sin(slopeStartToEndAngle);
-                    SIN_dist = SIN * distanceBetweenCurrs;
-                    COS_dist = COS * distanceBetweenCurrs;
-                    //print("COS " + COS + " SIN " + SIN + " COS_dist " + COS_dist + " SIN_dist " + SIN_dist);
-                }
-
-                var colPer = col / targetBD.width;
-                var currColX = COS_dist * colPer;
-                var currColY = SIN_dist * colPer;
-                currColX += cp1.x;
-                currColY += cp1.y;
-                //print("currColX " + currColX + " currColY " + currColY);
-                srcBD.getPixel(currColX, currColY,pixel, true);
+                var colPer = col / windowW;
+                var currColX = COS_dist * colPer + currStartX;
+                var currColY = SIN_dist * colPer + currStartY;
+                
+                var pixel = { r: 0, g: 0, b: 0, a: 0 };
+                srcBD.getPixel(currColX, currColY, pixel, true);
+                
+                var depthPixel = { r: 0, g: 0, b: 0, a: 0 };
                 this.depthMapData.getPixel(currColX, currColY, depthPixel, true);
-
-                var heightPer = 1-(depthPixel.r / 255);
-                //make percentage between -1 and 1
-                heightPer += 1;
-                heightPer /= 2;
-                heightPer *= this.heightFactor;
-
-                ////////////////////////////////////////////////////////
+    
+                var heightPer = (depthPixel.r / 255);
+                heightPer = (heightPer + 1) / 2 * this.heightFactor;
+    
                 var __x = parseInt(col);
-                var __y = parseInt(row - (heightPer * rowPer));//
+                var __y = parseInt(row + halfBd - (heightPer) + this.nearPlane);//
 
-
+                
                 if(__y < windowH && __x > 0 && __x < windowW)
                 {
-                    
-
                     if(!prevHeights[__x])
                     {
                         prevHeights[__x] = windowH;
                     }
                     
-                    //targetBD.setPixel(__x, __y, pixel.r, pixel.g, pixel.b, pixel.a);
 
                     for(var h = __y; h < prevHeights[__x]; h++)
                     {
@@ -618,29 +458,57 @@ class MyGame extends Main {
                         if(!depthBuffer[h][__x])
                         {
                             depthBuffer[h][__x] = true;
-                            targetBD.setPixel(__x, h, pixel.r, pixel.g, pixel.b, pixel.a);
+                            targetBD.setPixel(__x, h, pixel.r, pixel.g, pixel.b, parseInt(rowPer * 500));
                         }
 
                         
                     }
 
                     prevHeights[__x] = __y;
-
                 }
-                
-                
-                
-                
-                //targetBD.setPixel(col, row, pixel.r, pixel.g, pixel.b, pixel.a);
+                /**/
 
+                //targetBD.setPixel(__x, __y, pixel.r, pixel.g, pixel.b, pixel.a);
             }
-
         }
-
     }
+    
+    
+    lerp(start, end, t) {
+        return start + (end - start) * t;
+    }
+
+    //easings
+
+    
+    easeInQuad(t, b, c, d) {
+        t /= d;
+        return c * t * t + b;
+    }
+    
+
     easeOutQuint(t, b, c, d) {
         t /= d;
         t--;
         return c * (t * t * t * t * t * t * t + 1) + b;
     }
+
+    easeOutQuad(t, b, c, d) {
+        t /= d;
+        return -c * t * (t - 2) + b;
+    }
+
+    easeOutCubic(t, b, c, d) {
+        t /= d;
+        t--;
+        return c * (t * t * t + 1) + b;
+    }
+
+    easeOutQuart(t, b, c, d) {
+        t /= d;
+        t--;
+        return -c * (t * t * t * t - 1) + b;
+    }
+    
+    
 }

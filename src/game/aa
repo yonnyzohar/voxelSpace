@@ -1,0 +1,111 @@
+floorCast(leftRay, rightRay, playerX, playerY, srcBD , targetBD, nearPlane, farPlane) {
+
+        var app = this.app;
+        var windowH = app.view.height;
+        var windowW = app.view.width;
+
+        var prevHeights = [];
+
+        //print(windowH);
+        //print(windowW);
+
+        var leftRaySin = Math.sin(leftRay);
+        var leftRayCos = Math.cos(leftRay);
+
+        var rightRaySin = Math.sin(rightRay);
+        var rightRayCos = Math.cos(rightRay);
+
+        //far topleft
+        var currentFarX1 = playerX + leftRayCos * farPlane;
+        var currentFarY1 = playerY + leftRaySin * farPlane;
+
+        //far top right
+        var currentFarX2 = playerX + rightRayCos * farPlane;
+        var currentFarY2 = playerY + rightRaySin * farPlane;
+
+        //near bottom left
+        var currentNearX1 = playerX + leftRayCos * nearPlane;
+        var currentNearY1 = playerY + leftRaySin * nearPlane;
+
+        //near bottom right
+        var currentNearX2 = playerX + rightRayCos * nearPlane;
+        var currentNearY2 = playerY + rightRaySin * nearPlane;
+
+        var pixel = {r:0, g:0, b:0, a:0};
+        var depthPixel = {r:0, g:0, b:0, a:0};
+        //go from btm to top
+        for (var _y = (windowH / 2); _y >= 0; _y--) {
+
+            //get percentage of descent
+            var sampleDepth = _y / (windowH/2);
+
+            //print("_y " + _y + " sampleDepth " + sampleDepth);
+
+            //get start x and y pixel at this percentage
+            var startX = (currentFarX1 - currentNearX1) / sampleDepth + currentNearX1;
+            var startY = (currentFarY1 - currentNearY1) / sampleDepth + currentNearY1;
+
+            var endX = (currentFarX2 - currentNearX2) / sampleDepth + currentNearX2;
+            var endY = (currentFarY2 - currentNearY2) / sampleDepth + currentNearY2;
+            
+            //new find e percantage
+            for (var _x = 0; _x < windowW; _x++) {
+                //get percentage of width
+                var sampleWidth = (_x) / (windowW);
+                var currX = (endX - startX) * sampleWidth + startX;
+                var currY = (endY - startY) * sampleWidth + startY;
+                //print(" _x " + _x + " sampleWidth " + sampleWidth);
+
+                if (isNaN(currX)) {
+                    currX = 0;
+                }
+                if (isNaN(currY)) {
+                    currY = 0;
+                }
+
+                //wrap around
+
+                //instead of getting the pixel from a large bitmapData, i can get it from the map
+                srcBD.getPixel(currX, currY, pixel,true);
+                this.depthMapData.getPixel(currX, currY, depthPixel, true);
+
+                var heightPer = (depthPixel.r / 255);
+                //make percentage between -1 and 1
+                heightPer += 1;
+                heightPer /= 2;
+                heightPer *= this.heightFactor;
+
+                ////////////////////////////////////////////////////////
+                var __x = parseInt(_x);
+                var __y = parseInt(_y + (windowH / 2) - (heightPer * sampleDepth));//
+
+                if(__y < windowH && __x > 0 && __x < windowW)
+                {
+
+                    if(!prevHeights[__x])
+                    {
+                        prevHeights[__x] = windowH;
+                    }
+                    
+                    //targetBD.setPixel(__x, __y, pixel.r, pixel.g, pixel.b, pixel.a);
+
+                    for(var h = __y; h < prevHeights[__x]; h++)
+                    {
+                        var d = Math.min((255*sampleDepth)*1.1, 255);
+                        targetBD.setPixel(__x, h, pixel.r, pixel.g, pixel.b, d);
+                    }
+
+                    prevHeights[__x] = __y;
+
+                }
+                //print("__x " + __x + "__y " + __y);
+                
+
+                //pixel = ceilBD.getPixel(currX, currY);
+                //pixel = ceilTile.getPixel(realX / Model.TILE_SIZE, realY / Model.TILE_SIZE);
+
+                //bmd.setPixel(_x, (Model.windowH / 2) - _y, pixel);
+            }
+        }
+
+    }
