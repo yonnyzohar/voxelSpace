@@ -129,14 +129,14 @@ class MyGame extends Main {
         var img1 = new Image();
         var img = new Image();
         const handleImageLoad1 = () => {
-            img.src = '../C1W.png';//C1W//D1
+            img.src = './C1W.png';//C1W//D1
             img.onload = handleImageLoad;
             var depthMapData = new BitmapData();
             depthMapData.fromImage(img1);
             this.depthMapData = depthMapData;
         }
         
-        img1.src = '../D1.png';//C1W//D1
+        img1.src = './D1.png';//C1W//D1
         img1.onload = handleImageLoad1;
         
 
